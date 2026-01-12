@@ -2,9 +2,32 @@ from docx import Document
 from docx.shared import Inches, Pt, Twips
 from typing import Optional
 import os
+import pythoncom
 from .models import Resume, Experience, Education
 from .utils import process_bullet_points
-from docx2pdf import convert
+
+def convert_word_to_pdf_hidden(word_path: str, pdf_path: str):
+    """
+    Convert Word document to PDF using Word COM with hidden window.
+    This prevents Word from flashing on screen during conversion.
+    """
+    pythoncom.CoInitialize()
+    try:
+        import win32com.client
+        word = win32com.client.Dispatch("Word.Application")
+        word.Visible = False  # Hide Word window
+        word.DisplayAlerts = False  # Suppress alerts
+        
+        # Convert to absolute path
+        abs_word_path = os.path.abspath(word_path)
+        abs_pdf_path = os.path.abspath(pdf_path)
+        
+        doc = word.Documents.Open(abs_word_path)
+        doc.SaveAs(abs_pdf_path, FileFormat=17)  # 17 = PDF format
+        doc.Close()
+        word.Quit()
+    finally:
+        pythoncom.CoUninitialize()
 
 # =============================================================================
 # FONT CONFIGURATION - Change these values to customize your resume
@@ -95,9 +118,9 @@ def generate_pdf_resume(resume: Resume) -> str:
     # First generate the Word document
     word_path = generate_word_resume(resume)
     
-    # Convert Word to PDF
+    # Convert Word to PDF (hidden, no flashing window)
     pdf_path = word_path.replace('.docx', '.pdf')
-    convert(word_path, pdf_path)
+    convert_word_to_pdf_hidden(word_path, pdf_path)
     
     return pdf_path
 

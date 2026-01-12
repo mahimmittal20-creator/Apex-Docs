@@ -1,16 +1,17 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, List, Optional
 from pydantic import BaseModel
-from .models import Resume, Experience, Education, JobDescription # Keep JobDescription for internal dummy
+from .models import Resume, Experience, Education, JobDescription
 from .document_generator import generate_pdf_resume, generate_word_resume
 from .openai_processor import tailor_resume 
+from . import database as db
+import openai
 import uuid 
 import os
-from dotenv import dotenv_values # Import dotenv
-from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
+from dotenv import dotenv_values
 
 # Load environment variables from .env file
 config = dotenv_values(".env")
@@ -102,31 +103,167 @@ async def generate_tailored_resume(request: GenerateResumeRequest):
     # Store the tailored resume with a unique ID
     resume_id = str(uuid.uuid4())
     generated_resumes_db[resume_id] = tailored_resume
+    
+    # Save to database for history
+    db.save_resume(
+        resume_id=resume_id,
+        job_title=request.desired_filename_job_title,
+        job_description=job_description_text,
+        resume_data=tailored_resume.model_dump()
+    )
 
     return {"resume_id": resume_id, "resume_data": tailored_resume.model_dump()}
 
 
-@app.get("/download_resume/pdf/{resume_id}/{desired_filename_job_title}/")
+def sanitize_filename(name: str) -> str:
+    """Remove or replace characters that are invalid in filenames."""
+    # Replace problematic characters
+    invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
+    result = name
+    for char in invalid_chars:
+        result = result.replace(char, '-')
+    return result
+
+@app.get("/download_resume/pdf/{resume_id}/{desired_filename_job_title:path}")
 async def download_resume_pdf(resume_id: str, desired_filename_job_title: str):
     if resume_id not in generated_resumes_db:
         raise HTTPException(status_code=404, detail="Generated resume not found")
 
     resume_to_download = generated_resumes_db[resume_id]
     
-    filename = f"{resume_to_download.name.replace(' ', '_')}_{desired_filename_job_title}_resume.pdf"
+    # Sanitize the filename to remove invalid characters
+    safe_job_title = sanitize_filename(desired_filename_job_title)
+    filename = f"{resume_to_download.name.replace(' ', '_')}_{safe_job_title}_resume.pdf"
 
     pdf_path = generate_pdf_resume(resume_to_download)
     return FileResponse(path=pdf_path, media_type="application/pdf", filename=filename)
 
-@app.get("/download_resume/word/{resume_id}/{desired_filename_job_title}/")
+@app.get("/download_resume/word/{resume_id}/{desired_filename_job_title:path}")
 async def download_resume_word(resume_id: str, desired_filename_job_title: str):
     if resume_id not in generated_resumes_db:
         raise HTTPException(status_code=404, detail="Generated resume not found")
 
     resume_to_download = generated_resumes_db[resume_id]
 
-    filename = f"{resume_to_download.name.replace(' ', '_')}_{desired_filename_job_title}_resume.docx"
+    # Sanitize the filename to remove invalid characters
+    safe_job_title = sanitize_filename(desired_filename_job_title)
+    filename = f"{resume_to_download.name.replace(' ', '_')}_{safe_job_title}_resume.docx"
 
     word_path = generate_word_resume(resume_to_download)
     return FileResponse(path=word_path, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename=filename)
+
+
+# =============================================================================
+# HISTORY ENDPOINTS
+# =============================================================================
+
+@app.get("/history/")
+async def get_resume_history():
+    """Get all previously generated resumes."""
+    return db.get_all_resumes()
+
+@app.get("/history/{resume_id}")
+async def get_resume_from_history(resume_id: str):
+    """Get a specific resume from history."""
+    resume = db.get_resume(resume_id)
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found in history")
+    
+    # Also load into memory for downloads
+    resume_data = resume["resume_data"]
+    generated_resumes_db[resume_id] = Resume(**resume_data)
+    
+    return resume
+
+@app.delete("/history/{resume_id}")
+async def delete_resume_from_history(resume_id: str):
+    """Delete a resume from history."""
+    success = db.delete_resume(resume_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    
+    # Also remove from memory
+    if resume_id in generated_resumes_db:
+        del generated_resumes_db[resume_id]
+    
+    return {"message": "Resume deleted successfully"}
+
+
+# =============================================================================
+# CHAT ENDPOINTS
+# =============================================================================
+
+class ChatRequest(BaseModel):
+    resume_id: str
+    message: str
+
+@app.post("/chat/")
+async def chat_about_resume(request: ChatRequest):
+    """Ask questions about a generated resume."""
+    # Get resume from memory or database
+    if request.resume_id in generated_resumes_db:
+        resume = generated_resumes_db[request.resume_id]
+        resume_data = resume.model_dump()
+    else:
+        stored = db.get_resume(request.resume_id)
+        if not stored:
+            raise HTTPException(status_code=404, detail="Resume not found")
+        resume_data = stored["resume_data"]
+    
+    # Get chat history
+    chat_history = db.get_chat_history(request.resume_id)
+    
+    # Build messages for OpenAI
+    messages = [
+        {
+            "role": "system", 
+            "content": f"""You are a helpful assistant that answers questions about the following resume. 
+            Be specific and reference actual content from the resume when answering.
+            
+            RESUME DATA:
+            {resume_data}
+            """
+        }
+    ]
+    
+    # Add chat history
+    for msg in chat_history:
+        messages.append({"role": msg["role"], "content": msg["content"]})
+    
+    # Add current message
+    messages.append({"role": "user", "content": request.message})
+    
+    # Get response from OpenAI
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages
+        )
+        assistant_response = response.choices[0].message.content
+        
+        # Save chat messages to database
+        db.save_chat_message(request.resume_id, "user", request.message)
+        db.save_chat_message(request.resume_id, "assistant", assistant_response)
+        
+        return {
+            "response": assistant_response,
+            "chat_history": db.get_chat_history(request.resume_id)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
+
+@app.get("/chat/{resume_id}")
+async def get_chat_history(resume_id: str):
+    """Get chat history for a resume."""
+    return db.get_chat_history(resume_id)
+
+@app.delete("/chat/{resume_id}")
+async def clear_chat_history(resume_id: str):
+    """Clear chat history for a resume (keeps resume)."""
+    conn = __import__('sqlite3').connect(db.DATABASE_PATH)
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM chat_history WHERE resume_id = ?', (resume_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "Chat history cleared"}
 
