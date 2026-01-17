@@ -3,6 +3,8 @@ from docx.shared import Inches, Pt, Twips
 from typing import Optional
 import os
 import pythoncom
+import uuid
+import time
 from .models import Resume, Experience, Education
 from .utils import process_bullet_points
 
@@ -12,6 +14,8 @@ def convert_word_to_pdf_hidden(word_path: str, pdf_path: str):
     This prevents Word from flashing on screen during conversion.
     """
     pythoncom.CoInitialize()
+    word = None
+    doc = None
     try:
         import win32com.client
         word = win32com.client.Dispatch("Word.Application")
@@ -24,10 +28,26 @@ def convert_word_to_pdf_hidden(word_path: str, pdf_path: str):
         
         doc = word.Documents.Open(abs_word_path)
         doc.SaveAs(abs_pdf_path, FileFormat=17)  # 17 = PDF format
-        doc.Close()
-        word.Quit()
+        doc.Close(False)  # Close without saving changes
+        doc = None
+    except Exception as e:
+        print(f"Error converting to PDF: {e}")
+        raise
     finally:
+        # Ensure Word is properly closed
+        try:
+            if doc:
+                doc.Close(False)
+        except:
+            pass
+        try:
+            if word:
+                word.Quit()
+        except:
+            pass
         pythoncom.CoUninitialize()
+        # Small delay to ensure file handles are released
+        time.sleep(0.5)
 
 # =============================================================================
 # FONT CONFIGURATION - Change these values to customize your resume
@@ -307,7 +327,9 @@ def generate_word_resume(resume: Resume) -> str:
                 para.clear()
 
 
-    file_path = f"./tmp/{resume.name.replace(' ', '_')}_resume.docx"
+    # Use unique filename to avoid permission issues when file is locked
+    unique_id = str(uuid.uuid4())[:8]
+    file_path = f"./tmp/{resume.name.replace(' ', '_')}_{unique_id}_resume.docx"
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     document.save(file_path)
     return file_path

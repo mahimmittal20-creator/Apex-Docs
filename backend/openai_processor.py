@@ -48,8 +48,8 @@ def tailor_resume(original_resume: Resume, job_description: JobDescription) -> R
     - Each bullet MUST include: specific action verb + detailed context + quantified result with numbers
     - Number of bullets per role:
       * Senior roles: 10-12 bullets (each 22-30 words)
-      * Mid-level roles: 8-10 bullets (each 20-28 words)
-      * Junior roles: 6-8 bullets (each 18-25 words)
+      * Mid-level roles: 8-10 bullets (each 15-22 words)
+      * Junior roles: 6-8 bullets (each 12-18 words)
     
     MANDATORY EXAMPLE FORMAT - Each bullet must be this detailed:
     "Spearheaded the design and implementation of an automated data validation framework using Python and SQL, reducing data errors by 47% and saving 120 hours of manual review time monthly across the finance department|Collaborated with cross-functional team of 12 stakeholders including product managers, developers, and QA engineers to deliver a $1.8M Salesforce Community Portal integration project, achieving 98% user adoption within first quarter|Architected and deployed comprehensive business intelligence dashboards in Tableau serving 200+ daily active users, enabling real-time tracking of 35 critical KPIs and improving executive decision-making speed by 60%"
