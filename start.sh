@@ -1,5 +1,5 @@
 #!/bin/bash
-pip install -r backend/requirements.txt
-python -m spacy download en_core_web_sm
+pip3 install -r backend/requirements.txt
+python3 -m spacy download en_core_web_sm
 uvicorn backend.main:app --reload
 

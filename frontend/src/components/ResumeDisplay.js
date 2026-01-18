@@ -24,11 +24,13 @@ function ResumeDisplay({ resumeId: propResumeId, jobTitleForDownload: propJobTit
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${generatedResume.name.replace(' ', '_')}_${currentJobTitleForDownload}_resume.${format}`);
+      // Use .docx extension for Word files, .pdf for PDF
+      const fileExtension = format === 'word' ? 'docx' : format;
+      link.setAttribute('download', `${generatedResume.name.replace(' ', '_')}_${currentJobTitleForDownload}_resume.${fileExtension}`);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      alert(`Resume downloaded as ${format.toUpperCase()}!`);
+      alert(`Resume downloaded as ${format === 'word' ? 'DOCX' : format.toUpperCase()}!`);
     } catch (error) {
       console.error(`Error downloading ${format} resume:`, error);
       alert(`Error downloading ${format} resume. Ensure a resume is generated.`);
