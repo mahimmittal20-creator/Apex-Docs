@@ -27,7 +27,7 @@ def tailor_resume(original_resume: Resume, job_description: JobDescription) -> R
     - location (from the resume)
 
     **MODIFY THE FOLLOWING FIELDS TO ALIGN WITH THE JOB DESCRIPTION:**
-    - summary
+    - summary (CRITICAL: The summary should mention"8+ years of experience")
     - skills (see SKILLS FORMATTING below)
     - For each experience entry: title, description (rephrase to highlight relevant achievements and keywords from JD)
     - projects (if present, rephrase to highlight relevant aspects)
@@ -36,8 +36,8 @@ def tailor_resume(original_resume: Resume, job_description: JobDescription) -> R
     **CRITICAL FORMATTING REQUIREMENT FOR SKILLS:**
     - Skills MUST be grouped by category
     - Each skill entry in the skills array should be in format: "Category Name: skill1, skill2, skill3, ..."
-    - Create 4-6 relevant categories based on the job description
-    - Each category MUST contain minimum 8-12 relevant skills (more for technical categories, fewer for soft skills)
+    - Create 3-5 relevant categories based on the job description
+    - Each category MUST around minimum 6-7 relevant skills (more for technical categories, fewer for soft skills)
     - Prioritize skills mentioned in the job description
     - Example format: ["Technical Skills: Python, SQL, Tableau, Power BI, Excel, JIRA, Git, AWS", "Soft Skills: Communication, Leadership, Problem Solving, Teamwork"]
 
@@ -49,7 +49,7 @@ def tailor_resume(original_resume: Resume, job_description: JobDescription) -> R
     - Number of bullets per role:
       * Senior roles: 10-12 bullets (each 22-30 words)
       * Mid-level roles: 8-10 bullets (each 15-22 words)
-      * Junior roles: 6-8 bullets (each 12-18 words)
+      * Junior roles: 6-8 bullets (each 12-15 words)
     
     MANDATORY EXAMPLE FORMAT - Each bullet must be this detailed:
     "Spearheaded the design and implementation of an automated data validation framework using Python and SQL, reducing data errors by 47% and saving 120 hours of manual review time monthly across the finance department|Collaborated with cross-functional team of 12 stakeholders including product managers, developers, and QA engineers to deliver a $1.8M Salesforce Community Portal integration project, achieving 98% user adoption within first quarter|Architected and deployed comprehensive business intelligence dashboards in Tableau serving 200+ daily active users, enabling real-time tracking of 35 critical KPIs and improving executive decision-making speed by 60%"
