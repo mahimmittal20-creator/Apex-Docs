@@ -11,6 +11,7 @@ from . import database as db
 import openai
 import uuid 
 import os
+import time
 from dotenv import dotenv_values
 
 # Load environment variables from .env file
@@ -83,7 +84,8 @@ BASE_USER_RESUME = Resume(
 
 class GenerateResumeRequest(BaseModel):
     job_description_text: str
-    desired_filename_job_title: str 
+    desired_filename_job_title: str
+    job_link: Optional[str] = None
 
 @app.post("/generate_tailored_resume/", response_model=Dict)
 async def generate_tailored_resume(request: GenerateResumeRequest):
@@ -109,20 +111,12 @@ async def generate_tailored_resume(request: GenerateResumeRequest):
         resume_id=resume_id,
         job_title=request.desired_filename_job_title,
         job_description=job_description_text,
-        resume_data=tailored_resume.model_dump()
+        resume_data=tailored_resume.model_dump(),
+        job_link=request.job_link
     )
 
     return {"resume_id": resume_id, "resume_data": tailored_resume.model_dump()}
 
-
-def sanitize_filename(name: str) -> str:
-    """Remove or replace characters that are invalid in filenames."""
-    # Replace problematic characters
-    invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|']
-    result = name
-    for char in invalid_chars:
-        result = result.replace(char, '-')
-    return result
 
 @app.get("/download_resume/pdf/{resume_id}/{desired_filename_job_title:path}")
 async def download_resume_pdf(resume_id: str, desired_filename_job_title: str):
@@ -131,9 +125,9 @@ async def download_resume_pdf(resume_id: str, desired_filename_job_title: str):
 
     resume_to_download = generated_resumes_db[resume_id]
     
-    # Sanitize the filename to remove invalid characters
-    safe_job_title = sanitize_filename(desired_filename_job_title)
-    filename = f"{resume_to_download.name.replace(' ', '_')}_{safe_job_title}_resume.pdf"
+    # Use timestamp for professional-looking filename (like Google Docs exports)
+    timestamp = int(time.time() * 1000)
+    filename = f"{resume_to_download.name}-resume-{timestamp}.pdf"
 
     pdf_path = generate_pdf_resume(resume_to_download)
     return FileResponse(path=pdf_path, media_type="application/pdf", filename=filename)
@@ -145,9 +139,9 @@ async def download_resume_word(resume_id: str, desired_filename_job_title: str):
 
     resume_to_download = generated_resumes_db[resume_id]
 
-    # Sanitize the filename to remove invalid characters
-    safe_job_title = sanitize_filename(desired_filename_job_title)
-    filename = f"{resume_to_download.name.replace(' ', '_')}_{safe_job_title}_resume.docx"
+    # Use timestamp for professional-looking filename (like Google Docs exports)
+    timestamp = int(time.time() * 1000)
+    filename = f"{resume_to_download.name}-resume-{timestamp}.docx"
 
     word_path = generate_word_resume(resume_to_download)
     return FileResponse(path=word_path, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename=filename)

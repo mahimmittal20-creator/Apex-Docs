@@ -24,9 +24,10 @@ function ResumeDisplay({ resumeId: propResumeId, jobTitleForDownload: propJobTit
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      // Use .docx extension for Word files, .pdf for PDF
+      // Use timestamp for professional-looking filename (like Google Docs exports)
+      const timestamp = Date.now();
       const fileExtension = format === 'word' ? 'docx' : format;
-      link.setAttribute('download', `${generatedResume.name.replace(' ', '_')}_${currentJobTitleForDownload}_resume.${fileExtension}`);
+      link.setAttribute('download', `${generatedResume.name}-resume-${timestamp}.${fileExtension}`);
       document.body.appendChild(link);
       link.click();
       link.remove();

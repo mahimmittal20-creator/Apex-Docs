@@ -5,6 +5,7 @@ function HistoryPage({ onSelectResume, onBack }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => {
     loadHistory();
@@ -61,6 +62,11 @@ function HistoryPage({ onSelectResume, onBack }) {
     });
   };
 
+  const toggleExpand = (id, e) => {
+    e.stopPropagation();
+    setExpandedId(expandedId === id ? null : id);
+  };
+
   return (
     <div className="history-page">
       <div className="history-header">
@@ -82,22 +88,50 @@ function HistoryPage({ onSelectResume, onBack }) {
         {history.map((item) => (
           <div 
             key={item.id} 
-            className="history-item"
-            onClick={() => handleSelect(item.id)}
+            className={`history-item ${expandedId === item.id ? 'expanded' : ''}`}
           >
-            <div className="history-item-info">
-              <h3>{item.job_title || 'Untitled'}</h3>
-              <p className="history-name">{item.name}</p>
-              <p className="history-date">{formatDate(item.created_at)}</p>
+            <div className="history-item-main" onClick={() => handleSelect(item.id)}>
+              <div className="history-item-info">
+                <h3>{item.job_title || 'Untitled'}</h3>
+                <p className="history-name">{item.name}</p>
+                {item.job_link && (
+                  <p className="history-link">
+                    <a 
+                      href={item.job_link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      🔗 View Job Posting
+                    </a>
+                  </p>
+                )}
+                <p className="history-date">{formatDate(item.created_at)}</p>
+              </div>
+              <div className="history-item-actions">
+                {item.job_description && (
+                  <button 
+                    onClick={(e) => toggleExpand(item.id, e)}
+                    className="expand-btn"
+                    title="View Job Description"
+                  >
+                    {expandedId === item.id ? '📄 ▲' : '📄 ▼'}
+                  </button>
+                )}
+                <button 
+                  onClick={(e) => handleDelete(item.id, e)}
+                  className="delete-btn"
+                >
+                  🗑️
+                </button>
+              </div>
             </div>
-            <div className="history-item-actions">
-              <button 
-                onClick={(e) => handleDelete(item.id, e)}
-                className="delete-btn"
-              >
-                🗑️
-              </button>
-            </div>
+            {expandedId === item.id && item.job_description && (
+              <div className="history-item-description" onClick={(e) => e.stopPropagation()}>
+                <h4>Job Description:</h4>
+                <pre>{item.job_description}</pre>
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -1,13 +1,9 @@
 import openai
-import os
-from typing import List, Dict, Any
 import json
 
-from .models import Resume, JobDescription, Experience, Education
+from .models import Resume, JobDescription
 
 def tailor_resume(original_resume: Resume, job_description: JobDescription) -> Resume:
-    # Debugging print statement
-    print(f"OpenAI API Key in openai_processor.py: {os.getenv('OPENAI_API_KEY')}")
 
     # Convert resume and job description to text for OpenAI
     original_resume_text = original_resume.model_dump_json(indent=2)

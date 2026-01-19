@@ -19,10 +19,17 @@ def init_db():
             id TEXT PRIMARY KEY,
             job_title TEXT NOT NULL,
             job_description TEXT,
+            job_link TEXT,
             resume_data TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
+    # Migration: Add job_link column if it doesn't exist (for existing databases)
+    cursor.execute("PRAGMA table_info(resumes)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'job_link' not in columns:
+        cursor.execute('ALTER TABLE resumes ADD COLUMN job_link TEXT')
     
     # Create chat_history table
     cursor.execute('''
@@ -39,15 +46,15 @@ def init_db():
     conn.commit()
     conn.close()
 
-def save_resume(resume_id: str, job_title: str, job_description: str, resume_data: dict):
+def save_resume(resume_id: str, job_title: str, job_description: str, resume_data: dict, job_link: str = None):
     """Save a generated resume to the database."""
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
     cursor.execute('''
-        INSERT OR REPLACE INTO resumes (id, job_title, job_description, resume_data, created_at)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (resume_id, job_title, job_description, json.dumps(resume_data), datetime.now()))
+        INSERT OR REPLACE INTO resumes (id, job_title, job_description, job_link, resume_data, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (resume_id, job_title, job_description, job_link, json.dumps(resume_data), datetime.now()))
     
     conn.commit()
     conn.close()
@@ -57,7 +64,7 @@ def get_resume(resume_id: str) -> Optional[Dict[str, Any]]:
     conn = sqlite3.connect(DATABASE_PATH)
     cursor = conn.cursor()
     
-    cursor.execute('SELECT * FROM resumes WHERE id = ?', (resume_id,))
+    cursor.execute('SELECT id, job_title, job_description, job_link, resume_data, created_at FROM resumes WHERE id = ?', (resume_id,))
     row = cursor.fetchone()
     conn.close()
     
@@ -66,8 +73,9 @@ def get_resume(resume_id: str) -> Optional[Dict[str, Any]]:
             "id": row[0],
             "job_title": row[1],
             "job_description": row[2],
-            "resume_data": json.loads(row[3]),
-            "created_at": row[4]
+            "job_link": row[3],
+            "resume_data": json.loads(row[4]),
+            "created_at": row[5]
         }
     return None
 
@@ -77,7 +85,7 @@ def get_all_resumes() -> List[Dict[str, Any]]:
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT id, job_title, created_at, resume_data 
+        SELECT id, job_title, job_description, job_link, created_at, resume_data 
         FROM resumes 
         ORDER BY created_at DESC
     ''')
@@ -86,11 +94,13 @@ def get_all_resumes() -> List[Dict[str, Any]]:
     
     resumes = []
     for row in rows:
-        resume_data = json.loads(row[3])
+        resume_data = json.loads(row[5])
         resumes.append({
             "id": row[0],
             "job_title": row[1],
-            "created_at": row[2],
+            "job_description": row[2],
+            "job_link": row[3],
+            "created_at": row[4],
             "name": resume_data.get("name", "Unknown")
         })
     return resumes

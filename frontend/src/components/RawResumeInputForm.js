@@ -4,6 +4,7 @@ import axios from 'axios';
 function RawResumeInputForm({ onResumeGenerated }) {
   const [jobDescriptionText, setJobDescriptionText] = useState('');
   const [desiredFilenameJobTitle, setDesiredFilenameJobTitle] = useState('');
+  const [jobLink, setJobLink] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -13,6 +14,7 @@ function RawResumeInputForm({ onResumeGenerated }) {
       const response = await axios.post('http://localhost:8000/generate_tailored_resume/', {
         job_description_text: jobDescriptionText,
         desired_filename_job_title: desiredFilenameJobTitle,
+        job_link: jobLink || null,
       });
       console.log('Tailored Resume Generated:', response.data);
       alert('Tailored Resume Generated Successfully!');
@@ -24,6 +26,7 @@ function RawResumeInputForm({ onResumeGenerated }) {
         );
       }
       setJobDescriptionText('');
+      setJobLink('');
     } catch (error) {
       console.error('Error generating tailored resume:', error);
       alert('Error generating tailored resume. Please ensure your OpenAI API key is configured correctly in the backend.');
@@ -46,13 +49,22 @@ function RawResumeInputForm({ onResumeGenerated }) {
         />
       </div>
       <div>
-        <label>Job Title for Download Filename:</label>
+        <label>Job Title / Company (for your tracking):</label>
         <input 
           type="text" 
           value={desiredFilenameJobTitle} 
           onChange={(e) => setDesiredFilenameJobTitle(e.target.value)} 
-          placeholder="e.g., Software Engineer" 
+          placeholder="e.g., Business Analyst - Amazon" 
           required 
+        />
+      </div>
+      <div>
+        <label>Job Link (optional):</label>
+        <input 
+          type="url" 
+          value={jobLink} 
+          onChange={(e) => setJobLink(e.target.value)} 
+          placeholder="e.g., https://linkedin.com/jobs/view/123456" 
         />
       </div>
       <button type="submit" disabled={loading}>

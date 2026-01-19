@@ -145,10 +145,17 @@ def convert_with_libreoffice(word_path: str, output_dir: str) -> bool:
     Convert Word to PDF using LibreOffice command line.
     Returns True if successful, False if LibreOffice not found.
     """
-    # Common LibreOffice paths
+    # Common LibreOffice paths by platform
     libreoffice_paths = []
     
-    if sys.platform == 'darwin':
+    if sys.platform == 'win32':
+        libreoffice_paths = [
+            shutil.which('soffice'),
+            r'C:\Program Files\LibreOffice\program\soffice.exe',
+            r'C:\Program Files (x86)\LibreOffice\program\soffice.exe',
+            os.path.expandvars(r'%PROGRAMFILES%\LibreOffice\program\soffice.exe'),
+        ]
+    elif sys.platform == 'darwin':
         libreoffice_paths = [
             '/Applications/LibreOffice.app/Contents/MacOS/soffice',
             shutil.which('soffice'),
@@ -194,32 +201,36 @@ def convert_with_libreoffice(word_path: str, output_dir: str) -> bool:
 def generate_pdf_resume(resume: Resume) -> str:
     """
     Generate PDF resume from Word template.
-    On Windows: Uses Word COM for conversion (no LibreOffice needed).
-    On Mac/Linux: Tries LibreOffice first (silent), falls back to docx2pdf (may prompt for Word access).
+    All platforms: Tries LibreOffice first (faster), falls back to platform-specific method.
+    - Windows fallback: Word COM
+    - Mac/Linux fallback: docx2pdf
     """
     # First generate the Word document from template
     word_path = generate_word_resume(resume)
     pdf_path = word_path.replace('.docx', '.pdf')
     output_dir = os.path.dirname(word_path) or '.'
     
+    # Try LibreOffice first on all platforms (faster)
+    if convert_with_libreoffice(word_path, output_dir):
+        print("PDF converted using LibreOffice (fast)")
+        return pdf_path
+    
+    # Fallback methods
     if sys.platform == 'win32':
-        # Windows: Use Word COM for conversion (native, no LibreOffice needed)
+        # Windows fallback: Use Word COM
+        print("LibreOffice not found, using Word COM...")
         convert_word_to_pdf_hidden(word_path, pdf_path)
     else:
-        # Mac/Linux: Try LibreOffice first (silent, no popups)
-        if convert_with_libreoffice(word_path, output_dir):
-            print("PDF converted using LibreOffice")
-        else:
-            # Fall back to docx2pdf (may trigger Word permission popup on Mac)
-            print("LibreOffice not found, falling back to docx2pdf...")
-            try:
-                from docx2pdf import convert as docx2pdf_convert
-                docx2pdf_convert(word_path, pdf_path)
-            except ImportError:
-                raise NotImplementedError(
-                    "PDF conversion requires either LibreOffice or docx2pdf with Microsoft Word. "
-                    "Install LibreOffice: brew install --cask libreoffice"
-                )
+        # Mac/Linux fallback: docx2pdf
+        print("LibreOffice not found, falling back to docx2pdf...")
+        try:
+            from docx2pdf import convert as docx2pdf_convert
+            docx2pdf_convert(word_path, pdf_path)
+        except ImportError:
+            raise NotImplementedError(
+                "PDF conversion requires either LibreOffice or docx2pdf with Microsoft Word. "
+                "Install LibreOffice: brew install --cask libreoffice"
+            )
     
     return pdf_path
 
