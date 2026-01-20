@@ -10,59 +10,68 @@ def tailor_resume(original_resume: Resume, job_description: JobDescription) -> R
     job_description_text = job_description.description # Use only the description text
 
     prompt = f"""
-    Tailor the provided resume (Original Resume) to the given Job Description. 
+    GENERATE a resume for the Job Description below. Use the Template Resume ONLY for structure (companies, dates, education, personal info).
+
+    **KEEP THESE FIXED FROM TEMPLATE (do not change):**
+    - name, email, phone, location, linkedin, github
+    - Company names: WebKorps, IBM, AmericanKorps
+    - Employment dates: start_date, end_date for each role
+    - Education: degree, major, university, graduation_date
+
+    **GENERATE THESE BASED ON JOB DESCRIPTION (create new content):**
     
-    **ALWAYS KEEP THE FOLLOWING FIELDS EXACTLY AS THEY ARE IN THE ORIGINAL RESUME:**
-    - name
-    - email
-    - phone
-    - linkedin (if present)
-    - github (if present)
-    - For each experience entry: company, start_date, end_date
-    - For each education entry: degree, major, university, graduation_date
-    - location (from the resume)
-
-    **MODIFY THE FOLLOWING FIELDS TO ALIGN WITH THE JOB DESCRIPTION:**
-    - summary (CRITICAL: The summary should mention"8+ years of experience")
-    - skills (see SKILLS FORMATTING below)
-    - For each experience entry: title, description (rephrase to highlight relevant achievements and keywords from JD)
-    - projects (if present, rephrase to highlight relevant aspects)
-    - certifications (update or rephrase to match job description needs, if applicable)
-
-    **CRITICAL FORMATTING REQUIREMENT FOR SKILLS:**
-    - Skills MUST be grouped by category
-    - Each skill entry in the skills array should be in format: "Category Name: skill1, skill2, skill3, ..."
-    - Create 3-5 relevant categories based on the job description
-    - Each category MUST around minimum 6-7 relevant skills (more for technical categories, fewer for soft skills)
-    - Prioritize skills mentioned in the job description
-    - Example format: ["Technical Skills: Python, SQL, Tableau, Power BI, Excel, JIRA, Git, AWS", "Soft Skills: Communication, Leadership, Problem Solving, Teamwork"]
-
-    **CRITICAL FORMATTING REQUIREMENT FOR EXPERIENCE DESCRIPTIONS:**
-    - Use the PIPE character "|" to separate each bullet point
-    - Do NOT use newlines or bullet symbols in the description
-    - STRICT MINIMUM: Each bullet MUST contain AT LEAST 20 words. Bullets under 20 words are REJECTED.
-    - Each bullet MUST include: specific action verb + detailed context + quantified result with numbers
-    - Number of bullets per role:
-      * Senior roles: 10-12 bullets (each 22-30 words)
-      * Mid-level roles: 8-10 bullets (each 15-22 words)
-      * Junior roles: 6-8 bullets (each 12-15 words)
+    1. **SUMMARY** - Write a professional summary (MINIMUM 75 words):
+       - MUST start with "8+ years of experience"
+       - Matches the target role from the job description
+       - Highlights relevant expertise, key skills, and achievements for THIS specific job
+       - Include industry keywords from the job description
     
-    MANDATORY EXAMPLE FORMAT - Each bullet must be this detailed:
-    "Spearheaded the design and implementation of an automated data validation framework using Python and SQL, reducing data errors by 47% and saving 120 hours of manual review time monthly across the finance department|Collaborated with cross-functional team of 12 stakeholders including product managers, developers, and QA engineers to deliver a $1.8M Salesforce Community Portal integration project, achieving 98% user adoption within first quarter|Architected and deployed comprehensive business intelligence dashboards in Tableau serving 200+ daily active users, enabling real-time tracking of 35 critical KPIs and improving executive decision-making speed by 60%"
+    2. **JOB TITLES** - Generate titles matching the target role:
+       - WebKorps (most recent): Senior level title (e.g., "Senior [ Relevant Role from JD]" or relavant JD title)
+       - IBM (middle): Mid level title (e.g., "[Relevant Role from JD]" or relavant JD title)
+       - AmericanKorps (earliest): Junior level title (e.g., "Junior [Relevant Role from JD]" or "Associate [Role]")
+       - NEVER use "Business Analyst" unless applying for BA roles
+    
+    3. **SKILLS** - Generate skills from the job description:
+       - Group into 3-5 categories: "Category Name: skill1, skill2, skill3, ..."
+       - Each category: 6-7 relevant skills
+       - Prioritize skills mentioned in the job description
+       - Example: ["Technical Skills: Python, SQL, AWS, Docker", "Soft Skills: Leadership, Communication"]
+    
+    4. **EXPERIENCE DESCRIPTIONS** - CRITICAL: WRITE LONG, DETAILED BULLETS
+       - Use PIPE "|" to separate bullet points (no newlines)
+       - MANDATORY MINIMUM WORD COUNTS (COUNT YOUR WORDS!):
+         * WebKorps (Senior): 10 bullets, MINIMUM 28 words each - NEVER less than 25 words
+         * IBM (Mid): 8 bullets, MINIMUM 22 words each - NEVER less than 20 words
+         * AmericanKorps (Junior): 6 bullets, MINIMUM 16 words each - NEVER less than 15 words
+       
+       ❌ BAD (TOO SHORT - 11 words): "Architected simulated avionics systems in C++, increasing simulator performance by 40%"
+       
+       ✅ GOOD Senior (30 words): "Architected and deployed high-performance simulated avionics systems using advanced C++ design patterns and multithreading techniques, resulting in a 40% improvement in simulator performance while reducing memory consumption by 25% across all test environments"
+       
+       ✅ GOOD Mid (22 words): "Led cross-functional development team of 8 engineers to successfully deliver customer-facing flight simulation portal ahead of schedule, increasing user engagement metrics by 40% within first quarter"
+       
+       ✅ GOOD Junior (17 words): "Developed and maintained comprehensive automated test scripts using Selenium and Python frameworks, improving overall code coverage from 60% to 85%"
+       
+       EACH BULLET MUST INCLUDE: action verb + specific context + technology/tools + quantified result + business impact
+    
+    5. **CERTIFICATIONS** - Generate 1 or 2 relevant certifications:
+       - Must match the target role/industry
+       - Include any certifications mentioned in job description as required/preferred
+       - DO NOT include certificates unless relevant to the job
 
-    Original Resume:\n{original_resume_text}
+    Template Resume (for structure only):\n{original_resume_text}
 
     Job Description:\n{job_description_text}
 
-    Return the tailored resume in the exact same JSON format as the original resume, ensuring it strictly adheres to the schema. 
-    Only return the JSON object.
+    Return valid JSON matching the template resume schema.
     """
 
     try:
         response = openai.chat.completions.create(
-            model="gpt-4o", # Or a more advanced model like gpt-4
+            model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are a professional resume writer who creates DETAILED, VERBOSE bullet points. Every experience bullet point you write MUST be at least 20-30 words long with specific metrics and quantified achievements. Never write short, generic bullets. Always include specific numbers, percentages, dollar amounts, team sizes, and timeframes. Output valid JSON only."},
+                {"role": "system", "content": "You are an expert resume writer. CRITICAL: Write LONG, DETAILED bullets. Summary: 75+ words. MINIMUM bullet lengths - Senior: 28+ words, Mid: 22+ words, Junior: 16+ words. SHORT BULLETS ARE REJECTED. Each bullet needs: action verb + context + tools/tech + metric + business impact. Example Senior bullet (30 words): 'Architected and deployed high-performance data systems using Kafka and Spark with advanced caching strategies, processing 2M daily transactions while reducing latency by 65% and cutting infrastructure costs by $50K annually'. Output valid JSON."},
                 {"role": "user", "content": prompt}
             ],
             response_format={ "type": "json_object" }

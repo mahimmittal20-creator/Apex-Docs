@@ -1,13 +1,12 @@
 from docx import Document
-from docx.shared import Inches, Pt, Twips
-from typing import Optional
+from docx.shared import Inches, Pt
 import os
 import sys
 import uuid
 import time
 import subprocess
 import shutil
-from .models import Resume, Experience, Education
+from .models import Resume
 from .utils import process_bullet_points
 
 # Platform-specific imports for Word to PDF conversion
